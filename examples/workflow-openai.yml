@@ -1,4 +1,4 @@
-# .github/workflows/history.yml — add this to any repo to make it self-documenting
+# Same as workflow.yml but using an OpenAI key instead of Anthropic
 name: Living History
 on:
   pull_request:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: SAIF-git903/archaeologist-live@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
       - name: Commit updated history
         run: |
           git config user.name "archaeologist-live[bot]"
