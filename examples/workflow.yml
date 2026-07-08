@@ -1,0 +1,25 @@
+# .github/workflows/history.yml — add this to any repo to make it self-documenting
+name: Living History
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  absorb:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: SAIF-git903/archaeologist-live@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Commit updated history
+        run: |
+          git config user.name "archaeologist-live[bot]"
+          git config user.email "bot@archaeologist.dev"
+          git add HISTORY.md .archaeologist/state.json
+          git diff --cached --quiet || git commit -m "chronicle: absorb PR #${{ github.event.pull_request.number }} [skip ci]"
+          git push

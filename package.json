@@ -1,0 +1,11 @@
+{
+  "name": "archaeologist-live",
+  "version": "0.1.0",
+  "description": "The self-documenting repo: a GitHub Action + CLI that absorbs every merged PR into a living HISTORY.md, with Chesterton's Fences for hard-won context.",
+  "type": "module",
+  "bin": { "archaeologist-live": "bin/cli.js" },
+  "files": ["bin", "src", "action.yml", "README.md"],
+  "engines": { "node": ">=20" },
+  "keywords": ["github-action", "documentation", "llm", "claude", "git", "history", "onboarding"],
+  "license": "MIT"
+}

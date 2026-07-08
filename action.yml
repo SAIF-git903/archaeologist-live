@@ -1,0 +1,19 @@
+name: "Archaeologist Live"
+description: "The self-documenting repo: absorbs each merged PR into a living HISTORY.md with Chesterton's Fences."
+branding:
+  icon: "book-open"
+  color: "orange"
+inputs:
+  anthropic_api_key:
+    description: "Anthropic API key"
+    required: true
+  github_token:
+    description: "GitHub token for reading PR data"
+    required: false
+    default: ${{ github.token }}
+outputs:
+  updated:
+    description: "Whether HISTORY.md changed"
+runs:
+  using: "node20"
+  main: "src/action.js"
