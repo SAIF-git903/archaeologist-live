@@ -8,6 +8,7 @@ const result = await update({
   repoDir: process.env.GITHUB_WORKSPACE || process.cwd(),
   githubToken: process.env.INPUT_GITHUB_TOKEN || process.env.GITHUB_TOKEN,
   anthropicKey: process.env.INPUT_ANTHROPIC_API_KEY,
+  openaiKey: process.env.INPUT_OPENAI_API_KEY,
 });
 if (process.env.GITHUB_OUTPUT) {
   fs.appendFileSync(

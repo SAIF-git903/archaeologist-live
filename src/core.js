@@ -100,28 +100,58 @@ export async function fetchNewMergedPrs(repo, sinceIso, token, cap = 30) {
 
 // ---------------------------------------------------------------- claude
 
-export async function callClaude(prompt, apiKey, maxTokens = 1500) {
-  const res = await fetch(ANTHROPIC_API, {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
+const OPENAI_API = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODEL = process.env.ARCHAEOLOGIST_OPENAI_MODEL || "gpt-4o-mini";
+
+/** Pick a provider from available keys. Anthropic wins if both are set. */
+export function resolveProvider({ anthropicKey, openaiKey }) {
+  const forced = (process.env.ARCHAEOLOGIST_PROVIDER || "").toLowerCase();
+  if (forced === "anthropic" || forced === "openai") return forced;
+  if (anthropicKey) return "anthropic";
+  if (openaiKey) return "openai";
+  return null;
+}
+
+export async function callLLM(prompt, { anthropicKey, openaiKey }, maxTokens = 1500) {
+  const provider = resolveProvider({ anthropicKey, openaiKey });
+  if (provider === "anthropic") {
+    const res = await fetch(ANTHROPIC_API, {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: maxTokens,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    return data.content.filter((b) => b.type === "text").map((b) => b.text).join("");
   }
-  const data = await res.json();
-  return data.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("");
+  if (provider === "openai") {
+    const res = await fetch(OPENAI_API, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        max_tokens: maxTokens,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
+  }
+  throw new Error(
+    "No LLM key found. Set ANTHROPIC_API_KEY or OPENAI_API_KEY."
+  );
 }
 
 export function buildUpdatePrompt(repo, prs, recentTail) {
@@ -217,7 +247,7 @@ export function recentTail(historyPath, chars = 2500) {
 
 // ---------------------------------------------------------------- main op
 
-export async function update({ repo, repoDir, githubToken, anthropicKey, log = console.log }) {
+export async function update({ repo, repoDir, githubToken, anthropicKey, openaiKey, log = console.log }) {
   const historyPath = path.join(repoDir, "HISTORY.md");
   let state = loadState(repoDir);
   if (!state) {
@@ -238,7 +268,9 @@ export async function update({ repo, repoDir, githubToken, anthropicKey, log = c
 
   ensureHistory(historyPath, repo);
   const prompt = buildUpdatePrompt(repo, fresh, recentTail(historyPath));
-  const raw = await callClaude(prompt, anthropicKey);
+  const keys = { anthropicKey, openaiKey };
+  log(`Using provider: ${resolveProvider(keys)}`);
+  const raw = await callLLM(prompt, keys);
   let update_;
   try {
     update_ = parseClaudeJson(raw);
